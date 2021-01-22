@@ -2,6 +2,7 @@ import React from "react";
 import { useQuery } from "react-query";
 // Components
 import { Item } from "../item/Item";
+import { Cart } from "../cart/Cart";
 import Drawer from "@material-ui/core/Drawer";
 import LinearProgress from "@material-ui/core/LinearProgress";
 import Grid from "@material-ui/core/Grid";
@@ -33,33 +34,76 @@ export const Main = (): JSX.Element => {
         "products", getProducts
     );    
 
-    const getTotalItems = () => null;
-    const handleAddToCart = (clickedItem: CartItemType) => null;
-    const handleRemoveFromCart = () => null;
+    const getTotalItems = (items: CartItemType[]) => {
+        return items.reduce((accumulator: number, item) => 
+            accumulator + item.amount, 0);
+    };    
+
+    const handleAddToCart = (clickedItem: CartItemType) => {
+        setCartItems((previous) => {
+            // 1. Is the item already in the cart?
+            const isItemInCart = previous.find((item) => item.id === clickedItem.id);
+            if (isItemInCart) {
+                return previous.map((item) => (
+                    item.id === clickedItem.id
+                    ? { ...item, amount: item.amount + 1 }
+                    : item
+                ))
+            }
+            // First time the item is added.
+            return [...previous, {...clickedItem, amount: 1}];
+        })
+    };
+
+    const handleRemoveFromCart = (id: number) => {
+        setCartItems((previous) => (
+            previous.reduce((accumulator, item) => {
+                if (item.id === id) {
+                    if (item.amount === 1) return accumulator;
+                    return [...accumulator, {
+                        ...item, amount: item.amount - 1
+                    }];
+                } else {
+                    return [...accumulator, item];
+                }
+            }, [] as CartItemType[])
+        ))
+    };
 
     if (isLoading) return <LinearProgress />;
     if (error) return <aside>Something went wrong....</aside>
 
     return (
-        <Wrapper>
-            <Drawer 
-                anchor="right" 
-                open={cartOpen} 
-                onClose={() => setCartOpen(false)}
-                >Cart goes Here!
-            </Drawer>
-            
-            <Grid container spacing={3}>
-                {data?.map((item) => (
-                    <Grid item key={item.id} xs={12} sm={4}>
-                        <Item 
-                            item={item} 
-                            handleAddToCart={handleAddToCart} 
+        <React.Fragment>
+            <Wrapper>
+                <Drawer 
+                    anchor="right" 
+                    open={cartOpen} 
+                    onClose={() => setCartOpen(false)}
+                    >
+                        <Cart
+                            cartItems={cartItems}
+                            addToCart={handleAddToCart}
+                            removeFromCart={handleRemoveFromCart}
                         />
-                    </Grid>
-                ))}
-            </Grid>
-        </Wrapper>
+                </Drawer>
+                <StyledButton onClick={() => setCartOpen(true)}>
+                    <Badge badgeContent={getTotalItems(cartItems)} color="error">
+                        <AddShoppingCartIcon />
+                    </Badge>
+                </StyledButton>
+                <Grid container spacing={3}>
+                    {data?.map((item) => (
+                        <Grid item key={item.id} xs={12} sm={4}>
+                            <Item 
+                                item={item} 
+                                handleAddToCart={handleAddToCart} 
+                            />
+                        </Grid>
+                    ))}
+                </Grid>
+            </Wrapper>
+        </React.Fragment>
     );
 };
 
